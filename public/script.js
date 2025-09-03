@@ -1,3 +1,7 @@
+    const SUPABASE_URL = 'https://hmpoxlwchwkjcxjehqyx.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhtcG94bHdjaHdramN4amVocXl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4MzM2MTIsImV4cCI6MjA3MjQwOTYxMn0.Hf-b4KiMgx5jVyGzcMzRMUw-el5wUOvfQdprSLPzy3s
+';
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 document.addEventListener('DOMContentLoaded', () => {
     const video = document.getElementById('video');
     const captureButton = document.getElementById('captureButton');
