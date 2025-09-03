@@ -1,66 +1,59 @@
-    const SUPABASE_URL = 'https://hmpoxlwchwkjcxjehqyx.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhtcG94bHdjaHdramN4amVocXl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4MzM2MTIsImV4cCI6MjA3MjQwOTYxMn0.Hf-b4KiMgx5jVyGzcMzRMUw-el5wUOvfQdprSLPzy3s
-';
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-document.addEventListener('DOMContentLoaded', () => {
-    const video = document.getElementById('video');
-    const captureButton = document.getElementById('captureButton');
-    const registerButton = document.getElementById('registerButton');
-    const nameInput = document.getElementById('name');
-    const photoInput = document.getElementById('photo');
-    const responseEl = document.getElementById('response');
+// Inisialisasi Supabase Client (Bagian ini sudah benar)
+const SUPABASE_URL = 'https://hmpoxlwchwkjcxjehqyx.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhtcG94bHdjaHdramN4amVocXl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4MzM2MTIsImV4cCI6MjA3MjQwOTYxMn0.Hf-b4KiMgx5jVyGzcMzRMUw-el5wUOvfQdprSLPzy3s';
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    async function startVideo() {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
-            video.srcObject = stream;
-        } catch (err) {
-            console.error("Error mengakses kamera: ", err);
-            responseEl.textContent = "Error: Gagal mengakses kamera.";
-        }
+// Ambil elemen dari HTML
+const registerButton = document.getElementById('registerButton');
+const captureButton = document.getElementById('captureButton');
+const registerNameInput = document.getElementById('registerName'); // Pastikan ID di HTML sesuai
+const attendNameInput = document.getElementById('attendName');     // Pastikan ID di HTML sesuai
+const responseEl = document.getElementById('response');
+
+// --- BAGIAN PENDAFTARAN ---
+registerButton.addEventListener('click', async () => {
+    const name = registerNameInput.value;
+    if (!name) {
+        responseEl.textContent = 'Status: Nama untuk pendaftaran harus diisi!';
+        return;
     }
-    startVideo();
 
-    registerButton.addEventListener('click', async () => {
-        const name = nameInput.value;
-        const photo = photoInput.files[0];
-        if (!name || !photo) {
-            responseEl.textContent = 'Status: Nama dan foto harus diisi!';
-            return;
-        }
+    responseEl.textContent = 'Status: Mendaftarkan...';
+    
+    // INI BAGIAN YANG DIUBAH: Gunakan client Supabase, bukan fetch
+    const { error } = await supabase.from('users').insert({ name: name });
 
-        const formData = new FormData();
-        formData.append('name', name);
-        formData.append('photo', photo);
-        responseEl.textContent = 'Status: Mendaftarkan... Mohon tunggu.';
+    if (error) {
+        responseEl.textContent = `Status: Gagal - ${error.message}`;
+    } else {
+        responseEl.textContent = `Status: Pengguna ${name} berhasil terdaftar!`;
+        registerNameInput.value = ''; // Kosongkan input
+    }
+});
 
-        try {
-            const res = await fetch('/register', { method: 'POST', body: formData });
-            const data = await res.json();
-            responseEl.textContent = `Status: ${data.message}`;
-        } catch (error) {
-            responseEl.textContent = 'Status: Terjadi kesalahan saat pendaftaran.';
-        }
-    });
+// --- BAGIAN ABSENSI ---
+captureButton.addEventListener('click', async () => {
+    const name = attendNameInput.value;
+    if (!name) {
+        responseEl.textContent = 'Status: Nama untuk absensi harus diisi!';
+        return;
+    }
 
-    captureButton.addEventListener('click', async () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext('2d').drawImage(video, 0, 0);
-        responseEl.textContent = 'Status: Memproses absensi... Mohon tunggu.';
+    responseEl.textContent = 'Status: Memproses absensi...';
+    
+    try {
+        // INI BAGIAN YANG DIUBAH: Panggil Edge Function 'attend' di Supabase
+        const { data, error } = await supabase.functions.invoke('attend', {
+            body: { name: name }
+        });
 
-        canvas.toBlob(async (blob) => {
-            const formData = new FormData();
-            formData.append('photo', blob, 'absen.jpg');
+        if (error) throw error;
+        
+        responseEl.textContent = `Status: ${data.message}`;
+        attendNameInput.value = ''; // Kosongkan input
 
-            try {
-                const res = await fetch('/attend', { method: 'POST', body: formData });
-                const data = await res.json();
-                responseEl.textContent = `Status: ${data.message}`;
-            } catch (error) {
-                responseEl.textContent = 'Status: Terjadi kesalahan saat absensi.';
-            }
-        }, 'image/jpeg');
-    });
+    } catch (error) {
+        const errorMessage = error.context?.body?.message || error.message;
+        responseEl.textContent = `Status: Gagal - ${errorMessage}`;
+    }
 });
